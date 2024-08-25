@@ -1,34 +1,23 @@
 # Author: 赩林, xilin0x7f@163.com
 import argparse
+import nilearn
 import nibabel as nib
 import numpy as np
 
-import subprocess
+cifti_ref_path = r'F:\melodic_test\group.ica\melodic_IC.dscalar.nii'
+nifti_path = r'F:\melodic_test\grot\dr_stage3_ic0000_tstat1.nii.gz'
+cifti_out_path = r'F:\melodic_test\group.ica\dr_stage3_ic0000_tstat1.dscalar.nii'
+#%%
+cifti_img = nib.load(cifti_ref_path)
 
-def convertCifti2Nifti(cifti_file_path, nifti_file_path):
-    cifti_file = nib.load(cifti_file_path)
-    cifti_data = cifti_file.get_fdata()
+nii_header = nib.load(nifti_path)
+data = nii_header.get_fdata()
+if data.ndim < 4:
+    data = data.reshape(-1, 1)
 
-    nii_img = nib.Nifti1Image(cifti_data.T[:, np.newaxis, np.newaxis, :], np.eye(4))
+data = data[:cifti_img.get_fdata().shape[1], :].T
 
-    nib.save(nii_img, nifti_file_path)
-    pass
-
-convertCifti2Nifti(
-    r'/mnt/h/melodic_test/group.ica/melodic_IC.dscalar.nii',
-    r'/mnt/h/melodic_test/group.ica/melodic_IC.nii.gz'
-)
-
-def convert_nifti_to_cifti(nifti_path, cifti_ref_path, cifti_out_path):
-    nii_header = nib.load(nifti_path)
-    data = nii_header.get_fdata()
-    data = data[:, 0, 0, :].T
-
-    cifti_img = nib.load(cifti_ref_path)
-    new_cifti_img = nib.Cifti2Image(data, header=cifti_img.header, nifti_header=cifti_img.nifti_header)
-    nib.save(new_cifti_img, cifti_out_path)
-
-convert_nifti_to_cifti(
-    r'/mnt/h/melodic_test/group.ica/melodic_IC.nii.gz',
-                       r'/mnt/h/melodic_test/group.ica/melodic_IC.dscalar.nii',
-                       r'/mnt/h/melodic_test/group.ica/melodic_IC_new.dscalar.nii')
+cifti_header = cifti_img.header.copy()
+cifti_header.matrix[0]._maps = [cifti_header.matrix[0]._maps[0] for i in range(data.shape[0])]
+new_cifti_img = nib.Cifti2Image(data, header=cifti_header, nifti_header=cifti_img.nifti_header)
+nib.save(new_cifti_img, cifti_out_path)
